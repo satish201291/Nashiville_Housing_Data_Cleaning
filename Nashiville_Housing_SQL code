@@ -1,0 +1,188 @@
+use housing_data;
+select * from housing_data;
+select SaleDate 
+from housing_data;
+
+
+-- Standardize date format
+select SaleDateConverted, convert(Date, SaleDate)
+from housing_data;
+update housing_data
+Set SaleDate = convert(Date, SaleDate);
+
+ALTER TABLE housing_data 
+Add SaleDateConverted Date;
+
+update housing_data
+set SaleDateConverted = convert(Date, SaleDate);
+
+-- Populate Property Address Data
+
+select PropertyAddress
+from housing_data;
+
+select PropertyAddress
+from housing_data
+where PropertyAddress is null;
+
+select *
+from housing_data
+where PropertyAddress is null;
+
+select a.ParcelID, a.PropertyAddress,b.ParcelID, b.PropertyAddress, ISNULL (a.PropertyAddress,b.PropertyAddress)
+from housing_data a
+join housing_data b
+     on a.ParcelID = b.ParcelID
+     AND a.[UniqueID] <> b.[UniqueID]
+where a.PropertyAddress is null;
+
+
+Update a
+SET PropertyAddress = ISNULL(a.PropertyAddress,b.PropertyAddress)
+From housing_data a
+join housing_data b
+     on a.ParcelID = b.ParcelID
+     AND a.[UniqueID] <> b.[UniqueID]
+where a.PropertyAddress is null;
+
+
+--Breaking out address into individual columns (Address, City,State)
+
+
+
+select PropertyAddress
+from housing_data;
+
+
+Select
+SUBSTRING(PropertyAddress, 1, charindex(',', PropertyAddress)-1) as Address
+, SUBSTRING(PropertyAddress, charindex(',', PropertyAddress)+1, LEN(PropertyAddress)) as Address
+From housing_data;
+
+ ALTER TABLE housing_data 
+Add PropertySplitAddress Nvarchar(255);
+
+update housing_data
+set PropertySplitAddress = SUBSTRING(PropertyAddress, 1, charindex(',', PropertyAddress)-1)
+
+
+ALTER TABLE housing_data 
+Add PropertySplitCity Nvarchar(255);
+
+update housing_data
+set PropertySplitCity = SUBSTRING(PropertyAddress, charindex(',', PropertyAddress)+1, LEN(PropertyAddress))
+
+
+Select  * From
+housing_data;
+
+Select OwnerAddress
+from housing_data;
+
+
+
+
+Select 
+    case when CHARINDEX(',',OwnerAddress)>0 
+         then SUBSTRING(OwnerAddress,1,CHARINDEX(',',OwnerAddress)-1) 
+         else OwnerAddress end Hno, 
+
+    CASE WHEN CHARINDEX(',',OwnerAddress)>0 
+         THEN SUBSTRING(OwnerAddress,CHARINDEX(',',OwnerAddress)+3,len(OwnerAddress))  
+         ELSE OwnerAddress END as Country
+from housing_data
+
+
+Select 
+DISTINCT OwnerAddress,
+   SUBSTRING(OwnerAddress, 1, CHARINDEX(',', OwnerAddress) - 1) as OwnerAdd,
+   RTRIM(LTRIM(REPLACE(REPLACE(OwnerAddress,SUBSTRING(OwnerAddress , 1, CHARINDEX(' ', OwnerAddress) - 1),''),REVERSE( LEFT( REVERSE(OwnerAddress), CHARINDEX(' ', REVERSE(OwnerAddress))-1 ) ),'')))as OwnerCity,
+   REVERSE( LEFT( REVERSE(OwnerAddress), CHARINDEX(' ', REVERSE(OwnerAddress))-1 ) ) as OwnerCountry
+From housing_data;
+
+
+-- Change Y and N to Yes No in Sold as Vacant Field
+Select 
+DISTINCT (SoldAsVacant), count(SoldAsVacant)
+from housing_data
+Group by SoldAsVacant
+order by 2;
+
+
+
+
+Select SoldAsVacant
+, Case when SoldAsVacant  = 'Y' then 'Yes'
+       when SoldAsVacant  = 'N' then 'No'
+	   ELSE SoldAsVacant
+	   END
+From housing_data; 
+
+
+Update housing_data
+set SoldAsVacant = Case when SoldAsVacant  = 'Y' then 'Yes'
+       when SoldAsVacant  = 'N' then 'No'
+	   ELSE SoldAsVacant
+	   END;
+
+
+
+
+
+
+-- Remove all duplicate
+
+
+
+With RowNumCTE as (
+select *,
+  ROW_NUMBER() OVER (
+  Partition by ParcelID,
+	           PropertyAddress,
+			   SalePrice,
+			   SaleDate,
+			   LegalReference
+			   ORDER by
+				  UniqueID
+				  ) row_num
+
+From housing_data
+)
+Delete
+From ROwNumCTE
+where row_num> 1
+
+
+
+With RowNumCTE as (
+select *,
+  ROW_NUMBER() OVER (
+  Partition by ParcelID,
+	           PropertyAddress,
+			   SalePrice,
+			   SaleDate,
+			   LegalReference
+			   ORDER by
+				  UniqueID
+				  ) row_num
+
+From housing_data
+)
+Select *
+From ROwNumCTE
+where row_num> 1
+
+select *
+From housing_data;
+
+
+-- Delete irrelevant colums
+
+Alter Table housing_data
+Drop column OwnerAddress, TaxDistrict, PropertyAddress, SaleDate
+
+
+
+
+
+
